@@ -6,7 +6,7 @@ export class ErrorHandler {
     private errorResultsList;
     private textDocument;
 
-    constructor(textDocument){
+    constructor(textDocument) {
         this.errorResultsList = [];
         this.textDocument = textDocument;
     }

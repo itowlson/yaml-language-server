@@ -17,13 +17,16 @@ import { removeDuplicatesObj } from './languageservice/utils/arrUtils';
 import { getLanguageService as getCustomLanguageService, LanguageSettings, CustomFormatterOptions, WorkspaceContextService } from './languageservice/yamlLanguageService';
 import * as nls from 'vscode-nls';
 import { CustomSchemaProvider, FilePatternAssociation } from './languageservice/services/jsonSchemaService';
-import { JSONSchema } from './languageservice/jsonSchema04';
+import { JSONSchema as JSONSchema04 } from './languageservice/jsonSchema04';
+import { JSONSchema as JSONSchema07 } from './languageservice/jsonSchema07';
 import { SchemaAssociationNotification, DynamicCustomSchemaRequestRegistration, CustomSchemaRequest } from './requestTypes';
 import { schemaRequestHandler } from './languageservice/services/schemaRequestHandler';
 import { isRelativePath, relativeToAbsolutePath } from './languageservice/utils/paths';
 import { URI } from 'vscode-uri';
 // tslint:disable-next-line: no-any
 nls.config(process.env['VSCODE_NLS_CONFIG'] as any);
+
+type JSONSchema = JSONSchema04 | JSONSchema07;
 
 /****************
  * Constants
@@ -71,6 +74,12 @@ interface JSONSchemaSettings {
     schema?: JSONSchema;
 }
 
+interface SchemaConfigurationSetting {
+    fileMatch: string[];
+    uri: string;
+    schema?: JSONSchema;
+}
+
 /****************
  * Variables
  ****************/
@@ -79,8 +88,8 @@ interface JSONSchemaSettings {
 let yamlConfigurationSettings: JSONSchemaSettings[] = void 0;
 let schemaAssociations: ISchemaAssociations = void 0;
 let formatterRegistration: Thenable<Disposable> = null;
-let specificValidatorPaths = [];
-let schemaConfigurationSettings = [];
+let specificValidatorPaths: string[] = [];
+let schemaConfigurationSettings: SchemaConfigurationSetting[] = [];
 let yamlShouldValidate = true;
 let yamlFormatterSettings = {
     singleQuote: false,
@@ -91,8 +100,8 @@ let yamlFormatterSettings = {
 } as CustomFormatterOptions;
 let yamlShouldHover = true;
 let yamlShouldCompletion = true;
-let schemaStoreSettings = [];
-let customTags = [];
+let schemaStoreSettings: unknown[] = [];
+let customTags: String[] = [];
 let schemaStoreEnabled = true;
 
 // File validation helpers
@@ -237,7 +246,7 @@ function updateConfiguration() {
  * @param schema schema id
  * @param languageSettings current server settings
  */
-function configureSchemas(uri: string, fileMatch: string[], schema: any, languageSettings: LanguageSettings) {
+function configureSchemas(uri: string, fileMatch: string[], schema: JSONSchema, languageSettings: LanguageSettings) {
     uri = checkSchemaURI(uri);
 
     if (schema === null) {
@@ -251,15 +260,14 @@ function configureSchemas(uri: string, fileMatch: string[], schema: any, languag
             specificValidatorPaths.push(url);
         });
     } else if (uri === KUBERNETES_SCHEMA_URL) {
-        specificValidatorPaths.push(fileMatch);
+        specificValidatorPaths.push(...fileMatch);
     }
 
     return languageSettings;
 }
 
 function isKubernetes(textDocument: TextDocument) {
-    for (const path in specificValidatorPaths) {
-        const globPath = specificValidatorPaths[path];
+    for (const globPath of specificValidatorPaths) {
         const fpa = new FilePatternAssociation(globPath);
 
         if (fpa.matchesPattern(textDocument.uri)) {
@@ -299,9 +307,9 @@ function validateTextDocument(textDocument: TextDocument): void {
        customLanguageService.doValidation(textDocument, isKubernetes(textDocument))
                          .then(function (diagnosticResults) {
         const diagnostics = [];
-        for (const diagnosticItem in diagnosticResults) {
-            diagnosticResults[diagnosticItem].severity = 1; //Convert all warnings to errors
-            diagnostics.push(diagnosticResults[diagnosticItem]);
+        for (const diagnosticItem of diagnosticResults) {
+            diagnosticItem.severity = 1; //Convert all warnings to errors
+            diagnostics.push(diagnosticItem);
         }
 
         connection.sendDiagnostics({ uri: textDocument.uri, diagnostics: removeDuplicatesObj(diagnostics) });
@@ -425,12 +433,12 @@ connection.onDidChangeConfiguration(change => {
 
     schemaConfigurationSettings = [];
 
-    for (const uri in yamlConfigurationSettings) {
-        const globPattern = yamlConfigurationSettings[uri];
+    for (const yamlSetting of yamlConfigurationSettings) {
+        const globPattern = yamlSetting.fileMatch;
 
         const schemaObj = {
             'fileMatch': Array.isArray(globPattern) ? globPattern : [globPattern],
-            'uri': checkSchemaURI(uri)
+            'uri': checkSchemaURI(yamlSetting.url)
         };
         schemaConfigurationSettings.push(schemaObj);
     }

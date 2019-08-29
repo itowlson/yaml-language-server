@@ -4,12 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 import { SingleYAMLDocument } from '../parser/yamlParser04';
 
-export function removeDuplicates(arr, prop) {
+export function removeDuplicates<T>(arr: T[], prop: keyof T): T[] {
     const new_arr = [];
-    const lookup  = {};
+    const lookup: { [key: string]: T }  = { };
 
-    for (const i in arr) {
-        lookup[arr[i][prop]] = arr[i];
+    for (const item of arr) {
+        const propValue = `${item[prop]}`;
+        lookup[propValue] = item;
     }
 
     for (const i in lookup) {
@@ -42,13 +43,12 @@ export function getLineOffsets(textDocString: String): number[] {
         return lineOffsets;
 }
 
-export function removeDuplicatesObj(objArray){
+export function removeDuplicatesObj<T>(objArray: T[]): T[] {
 
     const nonDuplicateSet = new Set();
     const nonDuplicateArr = [];
-    for (const obj in objArray) {
+    for (const currObj of objArray) {
 
-        const currObj = objArray[obj];
         const stringifiedObj = JSON.stringify(currObj);
         if (!nonDuplicateSet.has(stringifiedObj)) {
             nonDuplicateArr.push(currObj);
