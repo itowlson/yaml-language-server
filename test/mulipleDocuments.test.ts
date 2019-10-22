@@ -48,13 +48,11 @@ suite('Multiple Documents Validation Tests', () => {
 
         function validatorSetup(content: string) {
             const testTextDocument = setup(content);
-            const yDoc = parseYAML(testTextDocument.getText(), languageSettings.customTags);
-            return languageService.doValidation(testTextDocument, yDoc);
+            return languageService.doValidation(testTextDocument, false);
         }
 
         function hoverSetup(content: string, position) {
             const testTextDocument = setup(content);
-            const jsonDocument = parseYAML2(testTextDocument.getText());
             const jsonLanguageService = createJSONLanguageService();
             jsonLanguageService.configure({
                 schemas: [{
